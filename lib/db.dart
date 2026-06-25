@@ -1,5 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart' as p;
+import 'package:uuid/uuid.dart';
 
 import 'modelos.dart';
 
@@ -199,6 +200,59 @@ class DB {
   Future<void> deleteAtleta(String id) async {
     final db = await database;
     await db.delete('atletas', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // ---------------- Umbrales por atleta ----------------
+  /// Devuelve un mapa {codigo_umbral: valor} con los umbrales calibrados.
+  Future<Map<String, double>> getUmbralesAtleta(String idAtleta) async {
+    final db = await database;
+    final rows = await db.rawQuery('''
+      SELECT tu.codigo AS codigo, au.valor AS valor
+      FROM atletas_umbrales au
+      JOIN tipos_umbral tu ON tu.id_umbral = au.id_umbral
+      WHERE au.id_atleta = ?
+    ''', [idAtleta]);
+    final map = <String, double>{};
+    for (final r in rows) {
+      map[r['codigo'] as String] = (r['valor'] as num).toDouble();
+    }
+    return map;
+  }
+
+  /// Guarda (o reemplaza) un umbral del atleta por código.
+  /// Recalcula el estado 'calibrado' (true cuando tiene todos los tipos).
+  Future<void> setUmbralAtleta(
+      String idAtleta, String codigoUmbral, double valor) async {
+    final db = await database;
+    final t = await db.query('tipos_umbral',
+        where: 'codigo = ?', whereArgs: [codigoUmbral]);
+    if (t.isEmpty) return;
+    final idUmbral = t.first['id_umbral'] as int;
+
+    await db.delete('atletas_umbrales',
+        where: 'id_atleta = ? AND id_umbral = ?',
+        whereArgs: [idAtleta, idUmbral]);
+    await db.insert('atletas_umbrales', {
+      'id': const Uuid().v4(),
+      'id_atleta': idAtleta,
+      'id_umbral': idUmbral,
+      'valor': valor,
+    });
+
+    final distintos = Sqflite.firstIntValue(await db.rawQuery(
+          'SELECT COUNT(DISTINCT id_umbral) FROM atletas_umbrales WHERE id_atleta = ?',
+          [idAtleta],
+        )) ??
+        0;
+    final total = Sqflite.firstIntValue(
+            await db.rawQuery('SELECT COUNT(*) FROM tipos_umbral')) ??
+        0;
+    await db.update(
+      'atletas',
+      {'calibrado': (total > 0 && distintos >= total) ? 1 : 0},
+      where: 'id = ?',
+      whereArgs: [idAtleta],
+    );
   }
 
   // ---------------- Catálogos ----------------

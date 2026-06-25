@@ -3,10 +3,15 @@ import 'package:flutter/material.dart';
 import 'tema.dart';
 import 'instituciones.dart';
 import 'atletas.dart';
+import 'captura.dart';
 
-const String kVersion = 'v1.0.1';
+const String kVersion = 'v1.0.3';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await MotorCaptura.instance.configurar();
+  // Limpia cualquier servicio colgado de una sesión anterior.
+  await MotorCaptura.instance.limpiarSiCorre();
   runApp(const GenialisisAtletaApp());
 }
 
@@ -45,6 +50,12 @@ class HomeScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 16),
+              Image.asset(
+                'assets/logo.png',
+                height: 90,
+                errorBuilder: (_, __, ___) => const SizedBox(height: 90),
+              ),
+              const SizedBox(height: 10),
               const Text(
                 'GENIALISIS · ATLETA',
                 textAlign: TextAlign.center,
@@ -61,7 +72,7 @@ class HomeScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 36),
               _MenuCard(
                 icon: Icons.play_circle_fill,
                 titulo: 'Capturar',
@@ -70,7 +81,7 @@ class HomeScreen extends StatelessWidget {
                 onTap: () {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('La captura se activa en el siguiente paso'),
+                      content: Text('La captura de sesiones se activa en el siguiente paso'),
                       backgroundColor: kPanel,
                       behavior: SnackBarBehavior.floating,
                     ),

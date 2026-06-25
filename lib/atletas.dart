@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import 'tema.dart';
 import 'modelos.dart';
 import 'db.dart';
+import 'calibracion.dart';
 
 class AtletasScreen extends StatefulWidget {
   const AtletasScreen({super.key});
@@ -55,7 +56,8 @@ class _AtletasScreenState extends State<AtletasScreen> {
         ),
       ),
     );
-    if (guardado == true) await _cargar();
+    // Recargamos siempre: pudo cambiar la calibración aunque no se guarde el form.
+    if (guardado != null || actual != null) await _cargar();
   }
 
   Future<void> _eliminar(Atleta a) async {
@@ -331,6 +333,28 @@ class _AtletaFormState extends State<_AtletaForm> {
             child: const Text('Guardar',
                 style: TextStyle(fontWeight: FontWeight.bold)),
           ),
+          if (widget.actual != null) ...[
+            const SizedBox(height: 14),
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: kGold,
+                side: const BorderSide(color: kGold),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              icon: const Icon(Icons.tune),
+              label: Text(
+                widget.actual!.calibrado
+                    ? 'Calibración (completa)'
+                    : 'Calibración (pendiente)',
+              ),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CalibracionScreen(atleta: widget.actual!),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
