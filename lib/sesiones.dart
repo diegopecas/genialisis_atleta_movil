@@ -4,6 +4,7 @@ import 'tema.dart';
 import 'modelos.dart';
 import 'db.dart';
 import 'widgets_metricas.dart';
+import 'exportacion_logica.dart';
 
 // ---------------------------------------------------------------------
 //  Lista de sesiones de un atleta
@@ -42,7 +43,7 @@ class _SesionesAtletaScreenState extends State<SesionesAtletaScreen> {
       MaterialPageRoute(
         builder: (_) => SesionDetalleScreen(
           idSesion: s['id'] as String,
-          nombreAtleta: widget.atleta.nombre,
+          atleta: widget.atleta,
           inicio: s['inicio'] as int,
           fin: s['fin'] as int,
         ),
@@ -142,14 +143,14 @@ class _SesionesAtletaScreenState extends State<SesionesAtletaScreen> {
 // ---------------------------------------------------------------------
 class SesionDetalleScreen extends StatefulWidget {
   final String idSesion;
-  final String nombreAtleta;
+  final Atleta atleta;
   final int inicio;
   final int fin;
 
   const SesionDetalleScreen({
     super.key,
     required this.idSesion,
-    required this.nombreAtleta,
+    required this.atleta,
     required this.inicio,
     required this.fin,
   });
@@ -161,6 +162,7 @@ class SesionDetalleScreen extends StatefulWidget {
 class _SesionDetalleScreenState extends State<SesionDetalleScreen> {
   List<Map<String, dynamic>> _metricas = [];
   bool _cargando = true;
+  bool _exportando = false;
 
   @override
   void initState() {
@@ -203,6 +205,25 @@ class _SesionDetalleScreenState extends State<SesionDetalleScreen> {
     if (mounted) Navigator.pop(context, true);
   }
 
+  Future<void> _exportar() async {
+    setState(() => _exportando = true);
+    try {
+      await exportarSesionUnica(widget.atleta, widget.idSesion);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al exportar: $e'),
+            backgroundColor: kDanger,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _exportando = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final dur = widget.fin - widget.inicio;
@@ -211,6 +232,16 @@ class _SesionDetalleScreenState extends State<SesionDetalleScreen> {
         title: const Text('Detalle de sesión'),
         backgroundColor: kBg,
         actions: [
+          IconButton(
+            icon: _exportando
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: kGold))
+                : const Icon(Icons.ios_share, color: kGold),
+            onPressed: _exportando ? null : _exportar,
+          ),
           IconButton(
             icon: const Icon(Icons.delete_outline, color: kDanger),
             onPressed: _eliminar,
@@ -222,7 +253,7 @@ class _SesionDetalleScreenState extends State<SesionDetalleScreen> {
           : ListView(
               padding: const EdgeInsets.all(20),
               children: [
-                Text(widget.nombreAtleta,
+                Text(widget.atleta.nombre,
                     style: const TextStyle(
                         fontSize: 20, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 4),
@@ -272,13 +303,24 @@ class _SesionesSelectorScreenState extends State<SesionesSelectorScreen> {
   Future<void> _cargar() async {
     final inst = await DB.instance.getInstituciones();
     final atl = await DB.instance.getAtletas();
-    if (mounted) {
-      setState(() {
-        _instituciones = inst;
-        _atletas = atl;
-        _cargando = false;
-      });
+    if (!mounted) return;
+
+    // Selección inteligente: si solo hay un atleta, ir directo a sus sesiones.
+    if (atl.length == 1) {
+      await Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => SesionesAtletaScreen(atleta: atl.first),
+        ),
+      );
+      return;
     }
+
+    setState(() {
+      _instituciones = inst;
+      _atletas = atl;
+      _cargando = false;
+    });
   }
 
   String _nombreInst(String id) {

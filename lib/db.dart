@@ -365,6 +365,13 @@ class DB {
     ''', [idSesion]);
   }
 
+  Future<Map<String, dynamic>?> getSesion(String id) async {
+    final db = await database;
+    final r =
+        await db.query('sesiones', where: 'id = ?', whereArgs: [id], limit: 1);
+    return r.isEmpty ? null : r.first;
+  }
+
   Future<void> deleteSesion(String id) async {
     final db = await database;
     await db.delete('sesiones', where: 'id = ?', whereArgs: [id]);

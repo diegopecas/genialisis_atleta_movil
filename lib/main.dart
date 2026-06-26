@@ -6,8 +6,9 @@ import 'atletas.dart';
 import 'captura.dart';
 import 'captura_sesion.dart';
 import 'sesiones.dart';
+import 'exportacion.dart';
 
-const String kVersion = 'v1.0.7';
+const String kVersion = 'v1.0.8';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -112,6 +113,16 @@ class HomeScreen extends StatelessWidget {
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const InstitucionesScreen()),
+                ),
+              ),
+              const SizedBox(height: 14),
+              _MenuCard(
+                icon: Icons.ios_share,
+                titulo: 'Exportar',
+                subtitulo: 'Generar JSON de datos y catálogos',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ExportacionScreen()),
                 ),
               ),
               const Spacer(),
