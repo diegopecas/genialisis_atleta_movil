@@ -155,11 +155,18 @@ class DB {
 
   Future<void> upsertInstitucion(Institucion i) async {
     final db = await database;
-    await db.insert(
-      'instituciones',
-      i.toMap(),
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    final existe = await db.query('instituciones',
+        columns: ['id'], where: 'id = ?', whereArgs: [i.id], limit: 1);
+    if (existe.isEmpty) {
+      await db.insert('instituciones', i.toMap());
+    } else {
+      await db.update(
+        'instituciones',
+        {'nombre': i.nombre, 'tenant_genialisis': i.tenantGenialisis},
+        where: 'id = ?',
+        whereArgs: [i.id],
+      );
+    }
   }
 
   Future<void> deleteInstitucion(String id) async {
@@ -190,11 +197,29 @@ class DB {
 
   Future<void> upsertAtleta(Atleta a) async {
     final db = await database;
-    await db.insert(
-      'atletas',
-      a.toMap(),
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    final existe = await db.query('atletas',
+        columns: ['id'], where: 'id = ?', whereArgs: [a.id], limit: 1);
+
+    if (existe.isEmpty) {
+      // Nuevo: inserta normalmente.
+      await db.insert('atletas', a.toMap());
+    } else {
+      // Existente: actualiza SOLO los campos editables.
+      // No se toca 'calibrado' para no perder la calibración, y se usa UPDATE
+      // (no replace) para no disparar el ON DELETE CASCADE de los umbrales.
+      await db.update(
+        'atletas',
+        {
+          'id_institucion': a.idInstitucion,
+          'nombre': a.nombre,
+          'identificacion': a.identificacion,
+          'genero': a.genero,
+          'fecha_nacimiento': a.fechaNacimiento,
+        },
+        where: 'id = ?',
+        whereArgs: [a.id],
+      );
+    }
   }
 
   Future<void> deleteAtleta(String id) async {

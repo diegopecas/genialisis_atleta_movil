@@ -5,7 +5,7 @@ import 'instituciones.dart';
 import 'atletas.dart';
 import 'captura.dart';
 
-const String kVersion = 'v1.0.4';
+const String kVersion = 'v1.0.5';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
