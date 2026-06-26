@@ -47,6 +47,42 @@ class _CalibracionScreenState extends State<CalibracionScreen> {
     if (guardado == true) await _cargar();
   }
 
+  Future<void> _borrarCalibracion() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: kPanel,
+        title: const Text('Borrar calibración'),
+        content: const Text(
+            'Se borrarán los umbrales de salto, velocidad y aceleración. '
+            'El atleta quedará sin calibrar. ¿Continuar?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: kDanger),
+            child: const Text('Borrar'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await DB.instance.borrarCalibracion(widget.atleta.id);
+    await _cargar();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Calibración borrada'),
+          backgroundColor: kPanel,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -118,6 +154,19 @@ class _CalibracionScreenState extends State<CalibracionScreen> {
                       ],
                     ),
                   ),
+                if (_umbrales.isNotEmpty) ...[
+                  const SizedBox(height: 24),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: kDanger,
+                      side: const BorderSide(color: kDanger),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('Borrar calibración'),
+                    onPressed: _borrarCalibracion,
+                  ),
+                ],
               ],
             ),
     );

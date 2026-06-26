@@ -255,6 +255,15 @@ class DB {
     );
   }
 
+  /// Borra todos los umbrales del atleta y lo marca como no calibrado.
+  Future<void> borrarCalibracion(String idAtleta) async {
+    final db = await database;
+    await db.delete('atletas_umbrales',
+        where: 'id_atleta = ?', whereArgs: [idAtleta]);
+    await db.update('atletas', {'calibrado': 0},
+        where: 'id = ?', whereArgs: [idAtleta]);
+  }
+
   // ---------------- Catálogos ----------------
   Future<List<TipoUmbral>> getTiposUmbral() async {
     final db = await database;
