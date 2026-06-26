@@ -5,6 +5,7 @@ import 'tema.dart';
 import 'modelos.dart';
 import 'db.dart';
 import 'calibracion.dart';
+import 'sesiones.dart';
 
 class AtletasScreen extends StatefulWidget {
   const AtletasScreen({super.key});
@@ -351,6 +352,22 @@ class _AtletaFormState extends State<_AtletaForm> {
                 context,
                 MaterialPageRoute(
                   builder: (_) => CalibracionScreen(atleta: widget.actual!),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: const BorderSide(color: Colors.white38),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              icon: const Icon(Icons.history),
+              label: const Text('Sesiones'),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => SesionesAtletaScreen(atleta: widget.actual!),
                 ),
               ),
             ),

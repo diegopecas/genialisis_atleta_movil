@@ -4,8 +4,10 @@ import 'tema.dart';
 import 'instituciones.dart';
 import 'atletas.dart';
 import 'captura.dart';
+import 'captura_sesion.dart';
+import 'sesiones.dart';
 
-const String kVersion = 'v1.0.5';
+const String kVersion = 'v1.0.7';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -76,17 +78,21 @@ class HomeScreen extends StatelessWidget {
               _MenuCard(
                 icon: Icons.play_circle_fill,
                 titulo: 'Capturar',
-                subtitulo: 'Disponible en el siguiente paso',
-                habilitado: false,
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('La captura de sesiones se activa en el siguiente paso'),
-                      backgroundColor: kPanel,
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                },
+                subtitulo: 'Grabar una sesión de un atleta',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CapturaSesionScreen()),
+                ),
+              ),
+              const SizedBox(height: 14),
+              _MenuCard(
+                icon: Icons.bar_chart,
+                titulo: 'Sesiones',
+                subtitulo: 'Ver el historial por atleta',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SesionesSelectorScreen()),
+                ),
               ),
               const SizedBox(height: 14),
               _MenuCard(

@@ -289,6 +289,87 @@ class DB {
         where: 'id = ?', whereArgs: [idAtleta]);
   }
 
+  // ---------------- Sesiones ----------------
+  /// Guarda una sesión con sus métricas. [metricas] es una lista de mapas
+  /// {codigo, valor, umbral}. Devuelve el id de la sesión creada.
+  Future<String> guardarSesion({
+    required String idAtleta,
+    required int inicio,
+    required int fin,
+    required String datosCrudos,
+    required List<Map<String, dynamic>> metricas,
+  }) async {
+    final db = await database;
+    final idSesion = const Uuid().v4();
+
+    await db.insert('sesiones', {
+      'id': idSesion,
+      'id_atleta': idAtleta,
+      'inicio': inicio,
+      'fin': fin,
+      'datos_crudos': datosCrudos,
+    });
+
+    final tipos = await db.query('tipos_metrica');
+    final mapTipo = {
+      for (final t in tipos) t['codigo'] as String: t['id_metrica'] as int
+    };
+
+    for (final m in metricas) {
+      final idMet = mapTipo[m['codigo']];
+      if (idMet == null) continue;
+      await db.insert('sesiones_metricas', {
+        'id': const Uuid().v4(),
+        'id_sesion': idSesion,
+        'id_metrica': idMet,
+        'valor': m['valor'],
+        'umbral_usado': m['umbral'],
+      });
+    }
+    return idSesion;
+  }
+
+  Future<List<Map<String, dynamic>>> getSesiones(String idAtleta) async {
+    final db = await database;
+    return db.query('sesiones',
+        where: 'id_atleta = ?', whereArgs: [idAtleta], orderBy: 'inicio DESC');
+  }
+
+  /// Sesiones del atleta con un par de métricas destacadas (distancia, saltos)
+  /// para mostrarlas en la lista sin abrir cada una.
+  Future<List<Map<String, dynamic>>> getResumenSesiones(
+      String idAtleta) async {
+    final db = await database;
+    return db.rawQuery('''
+      SELECT s.id AS id, s.inicio AS inicio, s.fin AS fin,
+        MAX(CASE WHEN tm.codigo = 'DISTANCIA' THEN sm.valor END) AS distancia,
+        MAX(CASE WHEN tm.codigo = 'SALTOS' THEN sm.valor END) AS saltos
+      FROM sesiones s
+      LEFT JOIN sesiones_metricas sm ON sm.id_sesion = s.id
+      LEFT JOIN tipos_metrica tm ON tm.id_metrica = sm.id_metrica
+      WHERE s.id_atleta = ?
+      GROUP BY s.id
+      ORDER BY s.inicio DESC
+    ''', [idAtleta]);
+  }
+
+  Future<List<Map<String, dynamic>>> getMetricasSesion(String idSesion) async {
+    final db = await database;
+    return db.rawQuery('''
+      SELECT tm.codigo AS codigo, tm.nombre AS nombre, tm.unidad AS unidad,
+             sm.valor AS valor, sm.umbral_usado AS umbral_usado
+      FROM sesiones_metricas sm
+      JOIN tipos_metrica tm ON tm.id_metrica = sm.id_metrica
+      WHERE sm.id_sesion = ?
+      ORDER BY tm.id_metrica
+    ''', [idSesion]);
+  }
+
+  Future<void> deleteSesion(String id) async {
+    final db = await database;
+    await db.delete('sesiones', where: 'id = ?', whereArgs: [id]);
+  }
+
   // ---------------- Catálogos ----------------
   Future<List<TipoUmbral>> getTiposUmbral() async {
     final db = await database;
