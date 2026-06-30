@@ -6,7 +6,8 @@ plugins {
 
 android {
     namespace = "com.example.genialisis_atleta_movil"
-    compileSdk = flutter.compileSdkVersion
+    // Fijado en 36: lo exige file_picker / flutter_plugin_android_lifecycle
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

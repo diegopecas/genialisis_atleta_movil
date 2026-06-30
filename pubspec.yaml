@@ -31,6 +31,8 @@ dependencies:
   sqflite: ^2.3.3
   # Utilidad para construir rutas de archivos
   path: ^1.9.0
+  # Elegir archivos del celular (para importar)
+  file_picker: ^8.1.2
 
 dev_dependencies:
   flutter_test:

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
@@ -375,6 +377,180 @@ class DB {
   Future<void> deleteSesion(String id) async {
     final db = await database;
     await db.delete('sesiones', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // ---------------- Importación ----------------
+  Future<Set<String>> idsInstituciones() async {
+    final db = await database;
+    final r = await db.query('instituciones', columns: ['id']);
+    return r.map((e) => e['id'] as String).toSet();
+  }
+
+  Future<Set<String>> idsAtletas() async {
+    final db = await database;
+    final r = await db.query('atletas', columns: ['id']);
+    return r.map((e) => e['id'] as String).toSet();
+  }
+
+  Future<Set<String>> idsSesiones() async {
+    final db = await database;
+    final r = await db.query('sesiones', columns: ['id']);
+    return r.map((e) => e['id'] as String).toSet();
+  }
+
+  Future<Set<String>> atletasConCalibracion() async {
+    final db = await database;
+    final r = await db
+        .rawQuery('SELECT DISTINCT id_atleta FROM atletas_umbrales');
+    return r.map((e) => e['id_atleta'] as String).toSet();
+  }
+
+  Future<Set<String>> codigosTipoUmbral() async {
+    final db = await database;
+    final r = await db.query('tipos_umbral', columns: ['codigo']);
+    return r.map((e) => e['codigo'] as String).toSet();
+  }
+
+  Future<Set<String>> codigosTipoMetrica() async {
+    final db = await database;
+    final r = await db.query('tipos_metrica', columns: ['codigo']);
+    return r.map((e) => e['codigo'] as String).toSet();
+  }
+
+  Future<void> importarInstitucion(Map<String, dynamic> m) async {
+    final db = await database;
+    final fila = {
+      'id': m['id'],
+      'nombre': m['nombre'],
+      'tenant_genialisis': m['tenant_genialisis'],
+    };
+    final existe = await db.query('instituciones',
+        columns: ['id'], where: 'id = ?', whereArgs: [m['id']], limit: 1);
+    if (existe.isEmpty) {
+      await db.insert('instituciones', fila);
+    } else {
+      await db.update('instituciones', fila,
+          where: 'id = ?', whereArgs: [m['id']]);
+    }
+  }
+
+  Future<void> ensureInstitucion(Map<String, dynamic> m) async {
+    final db = await database;
+    final existe = await db.query('instituciones',
+        columns: ['id'], where: 'id = ?', whereArgs: [m['id']], limit: 1);
+    if (existe.isEmpty) await importarInstitucion(m);
+  }
+
+  Future<void> importarAtleta(
+      String idInstitucion, Map<String, dynamic> m) async {
+    final db = await database;
+    final fila = {
+      'id': m['id'],
+      'id_institucion': idInstitucion,
+      'nombre': m['nombre'],
+      'identificacion': m['identificacion'],
+      'genero': m['genero'],
+      'fecha_nacimiento': m['fecha_nacimiento'],
+      'calibrado': (m['calibrado'] == true) ? 1 : 0,
+    };
+    final existe = await db.query('atletas',
+        columns: ['id'], where: 'id = ?', whereArgs: [m['id']], limit: 1);
+    if (existe.isEmpty) {
+      await db.insert('atletas', fila);
+    } else {
+      await db.update('atletas', fila, where: 'id = ?', whereArgs: [m['id']]);
+    }
+  }
+
+  Future<void> ensureAtleta(
+      String idInstitucion, Map<String, dynamic> m) async {
+    final db = await database;
+    final existe = await db.query('atletas',
+        columns: ['id'], where: 'id = ?', whereArgs: [m['id']], limit: 1);
+    if (existe.isEmpty) await importarAtleta(idInstitucion, m);
+  }
+
+  /// Reemplaza toda la calibración de un atleta con la del archivo.
+  Future<void> importarCalibracion(
+      String idAtleta, List<dynamic> umbrales) async {
+    await borrarCalibracion(idAtleta);
+    for (final u in umbrales) {
+      final codigo = u['codigo'] as String;
+      final valor = (u['valor'] as num).toDouble();
+      await setUmbralAtleta(idAtleta, codigo, valor);
+    }
+  }
+
+  /// Inserta (o reemplaza) una sesión con sus métricas y datos crudos.
+  Future<void> importarSesion(
+      String idAtleta, Map<String, dynamic> m) async {
+    final db = await database;
+    await db.delete('sesiones', where: 'id = ?', whereArgs: [m['id']]);
+
+    final crudos = m['datos_crudos'];
+    await db.insert('sesiones', {
+      'id': m['id'],
+      'id_atleta': idAtleta,
+      'inicio': m['inicio'],
+      'fin': m['fin'],
+      'datos_crudos': crudos == null ? null : jsonEncode(crudos),
+    });
+
+    final tipos = await db.query('tipos_metrica');
+    final mapTipo = {
+      for (final t in tipos) t['codigo'] as String: t['id_metrica'] as int
+    };
+    for (final met in (m['metricas'] as List? ?? [])) {
+      final idMet = mapTipo[met['codigo']];
+      if (idMet == null) continue;
+      await db.insert('sesiones_metricas', {
+        'id': const Uuid().v4(),
+        'id_sesion': m['id'],
+        'id_metrica': idMet,
+        'valor': met['valor'],
+        'umbral_usado': met['umbral_usado'],
+      });
+    }
+  }
+
+  Future<void> importarTipoUmbral(Map<String, dynamic> m) async {
+    final db = await database;
+    final existe = await db.query('tipos_umbral',
+        columns: ['id_umbral'],
+        where: 'codigo = ?',
+        whereArgs: [m['codigo']],
+        limit: 1);
+    final fila = {
+      'codigo': m['codigo'],
+      'nombre': m['nombre'],
+      'descripcion': m['descripcion'],
+    };
+    if (existe.isEmpty) {
+      await db.insert('tipos_umbral', fila);
+    } else {
+      await db.update('tipos_umbral', {'nombre': m['nombre'], 'descripcion': m['descripcion']},
+          where: 'codigo = ?', whereArgs: [m['codigo']]);
+    }
+  }
+
+  Future<void> importarTipoMetrica(Map<String, dynamic> m) async {
+    final db = await database;
+    final existe = await db.query('tipos_metrica',
+        columns: ['id_metrica'],
+        where: 'codigo = ?',
+        whereArgs: [m['codigo']],
+        limit: 1);
+    final fila = {
+      'codigo': m['codigo'],
+      'nombre': m['nombre'],
+      'unidad': m['unidad'],
+    };
+    if (existe.isEmpty) {
+      await db.insert('tipos_metrica', fila);
+    } else {
+      await db.update('tipos_metrica', {'nombre': m['nombre'], 'unidad': m['unidad']},
+          where: 'codigo = ?', whereArgs: [m['codigo']]);
+    }
   }
 
   // ---------------- Catálogos ----------------

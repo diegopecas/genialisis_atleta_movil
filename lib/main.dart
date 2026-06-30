@@ -7,13 +7,13 @@ import 'captura.dart';
 import 'captura_sesion.dart';
 import 'sesiones.dart';
 import 'exportacion.dart';
+import 'importacion.dart';
 
-const String kVersion = 'v1.0.8';
+const String kVersion = 'v1.0.9';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await MotorCaptura.instance.configurar();
-  // Limpia cualquier servicio colgado de una sesión anterior.
   await MotorCaptura.instance.limpiarSiCorre();
   runApp(const GenialisisAtletaApp());
 }
@@ -45,6 +45,21 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final items = <_MenuItem>[
+      _MenuItem(Icons.play_circle_fill, 'Capturar', 'Grabar sesión',
+          () => const CapturaSesionScreen()),
+      _MenuItem(Icons.bar_chart, 'Sesiones', 'Historial',
+          () => const SesionesSelectorScreen()),
+      _MenuItem(Icons.groups, 'Atletas', 'Deportistas',
+          () => const AtletasScreen()),
+      _MenuItem(Icons.apartment, 'Instituciones', 'Escuelas',
+          () => const InstitucionesScreen()),
+      _MenuItem(Icons.ios_share, 'Exportar', 'Generar JSON',
+          () => const ExportacionScreen()),
+      _MenuItem(Icons.download, 'Importar', 'Cargar JSON',
+          () => const ImportacionScreen()),
+    ];
+
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -52,80 +67,42 @@ class HomeScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
               Image.asset(
                 'assets/logo.png',
-                height: 90,
-                errorBuilder: (_, __, ___) => const SizedBox(height: 90),
+                height: 80,
+                errorBuilder: (_, __, ___) => const SizedBox(height: 80),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               const Text(
                 'GENIALISIS · ATLETA',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: kGold,
-                  fontSize: 14,
+                  fontSize: 13,
                   letterSpacing: 4,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 6),
-              const Text(
-                'Rendimiento deportivo',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 36),
-              _MenuCard(
-                icon: Icons.play_circle_fill,
-                titulo: 'Capturar',
-                subtitulo: 'Grabar una sesión de un atleta',
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const CapturaSesionScreen()),
+              const SizedBox(height: 24),
+              Expanded(
+                child: GridView.count(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 14,
+                  crossAxisSpacing: 14,
+                  childAspectRatio: 1.05,
+                  children: items
+                      .map((it) => _MenuCuadro(
+                            item: it,
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => it.pantalla()),
+                            ),
+                          ))
+                      .toList(),
                 ),
               ),
-              const SizedBox(height: 14),
-              _MenuCard(
-                icon: Icons.bar_chart,
-                titulo: 'Sesiones',
-                subtitulo: 'Ver el historial por atleta',
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SesionesSelectorScreen()),
-                ),
-              ),
-              const SizedBox(height: 14),
-              _MenuCard(
-                icon: Icons.groups,
-                titulo: 'Atletas',
-                subtitulo: 'Gestionar deportistas y calibración',
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AtletasScreen()),
-                ),
-              ),
-              const SizedBox(height: 14),
-              _MenuCard(
-                icon: Icons.apartment,
-                titulo: 'Instituciones',
-                subtitulo: 'Gestionar escuelas y tenant',
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const InstitucionesScreen()),
-                ),
-              ),
-              const SizedBox(height: 14),
-              _MenuCard(
-                icon: Icons.ios_share,
-                titulo: 'Exportar',
-                subtitulo: 'Generar JSON de datos y catálogos',
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ExportacionScreen()),
-                ),
-              ),
-              const Spacer(),
+              const SizedBox(height: 4),
               Center(
                 child: Text(
                   kVersion,
@@ -140,61 +117,42 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-class _MenuCard extends StatelessWidget {
-  final IconData icon;
+class _MenuItem {
+  final IconData icono;
   final String titulo;
   final String subtitulo;
-  final VoidCallback onTap;
-  final bool habilitado;
+  final Widget Function() pantalla;
+  _MenuItem(this.icono, this.titulo, this.subtitulo, this.pantalla);
+}
 
-  const _MenuCard({
-    required this.icon,
-    required this.titulo,
-    required this.subtitulo,
-    required this.onTap,
-    this.habilitado = true,
-  });
+class _MenuCuadro extends StatelessWidget {
+  final _MenuItem item;
+  final VoidCallback onTap;
+
+  const _MenuCuadro({required this.item, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(18),
       child: Container(
-        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: habilitado ? 0.05 : 0.02),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: habilitado
-                ? kGold.withValues(alpha: 0.3)
-                : Colors.white.withValues(alpha: 0.06),
-          ),
+          color: Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: kGold.withValues(alpha: 0.3)),
         ),
-        child: Row(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon,
-                color: habilitado ? kGold : Colors.white24, size: 32),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(titulo,
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                        color: habilitado ? Colors.white : Colors.white38,
-                      )),
-                  const SizedBox(height: 2),
-                  Text(subtitulo,
-                      style: const TextStyle(
-                          color: Colors.white54, fontSize: 13)),
-                ],
-              ),
-            ),
-            Icon(Icons.chevron_right,
-                color: habilitado ? Colors.white38 : Colors.white12),
+            Icon(item.icono, color: kGold, size: 40),
+            const SizedBox(height: 12),
+            Text(item.titulo,
+                style: const TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 2),
+            Text(item.subtitulo,
+                style: const TextStyle(color: Colors.white54, fontSize: 12)),
           ],
         ),
       ),
